@@ -1,0 +1,3 @@
+2017-09-26  Rafał Lalik <rafallalik@gmail.com>
+
+  * Deploy as a separate project, to be installed on top of existing mlt.

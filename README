@@ -1,0 +1,64 @@
+MLT FRAMEWORK EXTRA MODULES README
+----------------------------------
+
+	Written by Rafal Lalil <rafallalik@gmail.com>
+
+	MLT is a LGPL multimedia framework designed for television broadcasting,
+	and melted is a GPL multi-unit video playout server with realtime
+	effects.
+
+	This package provides extra modules written by myself.
+
+	This document provides a quick reference for the minimal configuration,
+	build and installation of MLT Extra Modules. 
+
+
+Configuration
+-------------
+
+	Configuration is triggered by running:
+
+	    ./configure 
+
+	More information on usage is found by running:
+
+	    ./configure --help
+
+	NB: This script must be run to register new services after a CVS checkout
+	or subsequent update.
+
+
+Compilation
+-----------
+
+	Once configured, it should be sufficient to run:
+
+	    make
+
+	to compile the system.
+
+
+Testing
+-------
+
+	To execute the mlt tools without installation, or to test a new version
+	on a system with an already installed mlt version, you should run:
+
+	    . setenv
+
+	NB: This applies to your current shell only and it assumes a bash or 
+	regular bourne shell is in use.
+
+
+Installation
+------------
+
+	The install is triggered by running:
+	
+	    make install 
+	
+
+More Information
+----------------
+
+	For more detailed information, please refer to docs/install.txt.

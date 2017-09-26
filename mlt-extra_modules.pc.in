@@ -1,0 +1,7 @@
+
+Name: mlt-extra_modules
+Description: MLT multimedia framework extra modules
+Version: ${version}
+Requires:
+Libs: -L${libdir} ${libs}
+Cflags: ${cflags}

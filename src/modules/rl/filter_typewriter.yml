@@ -1,0 +1,55 @@
+schema_version: 0.1
+type: filter # consumer, filter, producer, or transition
+identifier: typewriter
+title: TypeWriter
+version: 0.0.1
+copyright: Copyright (C) 2017 Rafal Lalik
+license: GPL
+language: en
+url: none
+creator: Rafal Lalik
+tags:
+  - Video # this may produce video
+description: Type Writer effect
+#icon:
+  #filename: oldfilm/oldfilm.svg # relative to $MLT_DATA/modules/
+  #content-type: image/svg
+
+notes: Implementation or additional usage notes go here.
+bugs: # this can be just for documentation, or the tool may disclose it to help user avoid pitfalls
+  - need to do some speed improvement.
+
+parameters:
+  - identifier: field
+    title: Parsing Field
+    type: string
+    description: Field name to parse
+    readonly: no
+    required: yes
+    default: data
+    mutable: yes
+    widget: combo
+    values:
+      - data
+      - xmldata
+    unit: pixel
+
+  - identifier: beg
+    title: begin marker
+    type: string
+    description: Begin marker of the parsed string
+    readonly: no
+    required: yes
+    default: |^|
+    mutable: yes
+    widget: textbox
+
+  - identifier: end
+    title: End marker
+    type: integer
+    description: End marker of the parsed string
+    readonly: no
+    required: yes
+    default: |$|
+    mutable: yes
+    widget: textbox
