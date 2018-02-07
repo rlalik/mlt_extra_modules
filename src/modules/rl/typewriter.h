@@ -74,6 +74,8 @@ private:
     int parseOptions(const std::string& line, uint & i, ParseOptions & po);
     int parseMacro(const std::string& line, uint & i, uint & frame);
 
+    std::string detectUtf8(const std::string & str, size_t pos);
+
     void insertChar(char c, uint frame);
     void insertString(const std::string & str, uint frame);
     void insertBypass(uint frame);

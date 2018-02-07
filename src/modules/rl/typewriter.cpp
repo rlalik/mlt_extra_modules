@@ -200,3 +200,37 @@ void Frame::print()
            frame, s.c_str(),
            true ? '-' : '|');
 }
+
+std::string TypeWriter::detectUtf8(const std::string& str, size_t pos)
+{
+    /*
+     * 0x00 do 0x7F            – bits 0xxxxxxx
+     * 0x80 do 0x7FF           – bits 110xxxxx 10xxxxxx
+     * 0x800 do 0xFFFF         – bits 1110xxxx 10xxxxxx 10xxxxxx
+     * 0x10000 do 0x1FFFFF     – bits 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+     * 0x200000 do 0x3FFFFFF   – bits 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+     * 0x4000000 do 0x7FFFFFFF – bits 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+     */
+    unsigned char c = str[pos];
+    static const unsigned char masks[5] = { 0xfc, 0xf8, 0xf0, 0xc0, 0x80 };
+    if ((c & 0x80) == 0x00)
+    {
+        return str.substr(pos, 1);
+    }
+    else
+    {
+        for (int i = 0; i < 5; ++i)
+        {
+            if ((c & masks[i]) == masks[i])
+            {
+                for (int j = 0; j < (4-i); ++j)
+                {
+                    if ( !(0x80 & str[pos+1+j]) )
+                        return str.substr(pos, 1);
+                }
+                return str.substr(pos, 5-i);
+            }
+        }
+    }
+    return "";
+}

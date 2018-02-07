@@ -156,8 +156,9 @@ int TypeWriter::parseString(const std::string& line, int start_frame)
                 else if (c == 't')
                     c = '\t';
             }
-            insertChar(c, frame);
-            ++i;
+            std::string test_str = detectUtf8(line, i);
+            insertString(test_str, frame);
+            i += test_str.length();
         }
     }
 
@@ -256,10 +257,11 @@ int TypeWriter::parseMacro(const std::string& line, uint & i, uint & frame)
                     return -i-1;
             }
 
-            insertChar(c, frame);
+            std::string test_str = detectUtf8(line, i);
+            insertString(test_str, frame);
             frame += n;
 
-            ++i;
+            i += test_str.length();
             c = line[i];
         }
     }
