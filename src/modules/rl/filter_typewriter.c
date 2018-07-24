@@ -18,7 +18,6 @@
  */
 
 #include <framework/mlt.h>
-#include <framework/mlt_producer.h>
 #include <framework/mlt_filter.h>
 #include <framework/mlt_frame.h>
 

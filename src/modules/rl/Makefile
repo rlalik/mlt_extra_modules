@@ -39,7 +39,9 @@ clean:
 		rm -f $(OBJS) $(TARGET)
 
 install: all
-	install -m 755 $(TARGET) "$(DESTDIR)$(moduledir)"
+		install -m 755 $(TARGET) "$(DESTDIR)$(moduledir)"
+		install -d "$(DESTDIR)$(mltdatadir)/rl"
+		install -m 644 *.yml "$(DESTDIR)$(mltdatadir)/rl"
 
 ifneq ($(wildcard .depend),)
 include .depend
