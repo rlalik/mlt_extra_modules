@@ -1,3 +1,10 @@
+2020-11-11  Rafał Lalik <rafallalik@gmail.com>
+
+  * Version 0.1.0
+  * Now depends on libxml2 to simplify parsing data from kdenlive, tested only
+    for Linux.
+  * Support installation of kdenlive effect file.
+
 2017-09-26  Rafał Lalik <rafallalik@gmail.com>
 
   * Deploy as a separate project, to be installed on top of existing mlt.

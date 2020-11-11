@@ -10,7 +10,6 @@ all clean depend:
 	done
 
 distclean:
-	rm -f consumers.dat filters.dat producers.dat transitions.dat
 	echo > make.inc
 	list='$(SUBDIRS)'; \
 	for subdir in $$list; do \
@@ -28,5 +27,5 @@ install:
 	done
 
 uninstall:
-	rm -rf "$(DESTDIR)$(moduledir)"
+	rm -rf "$(DESTDIR)$(moduledir)/libmltrl.so"
 

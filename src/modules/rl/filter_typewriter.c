@@ -8,7 +8,7 @@
  * version 2.1 of the License, or (at your option) any later version.
  *
  * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * but WITHOUT ANY WARRANTY; without even the implied wrenderedanty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
@@ -26,41 +26,39 @@
 #include <string.h>
 #include <math.h>
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+
 #include "typewriter.h"
 
 struct producer_ktitle_s
 {
-	struct mlt_producer_s parent;
-	uint8_t *rgba_image;
-	uint8_t *current_image;
-	uint8_t *current_alpha;
-	mlt_image_format format;
-	int current_width;
-	int current_height;
-	int has_alpha;
-	pthread_mutex_t mutex;
+    struct mlt_producer_s parent;
+    uint8_t *rgba_image;
+    uint8_t *current_image;
+    uint8_t *current_alpha;
+    mlt_image_format format;
+    int current_width;
+    int current_height;
+    int has_alpha;
+    pthread_mutex_t mutex;
 };
 
 typedef struct producer_ktitle_s *producer_ktitle;
 
 typedef struct {
     TypeWriter * tw;          // holds TypeWriter object
-    int idx_beg;            // index of begin of the pattern
-    int idx_end;            // index of the end
 } twdata;
 
 typedef struct {
-    twdata ** arr;
-    int size;
-    int limit;
+    twdata * rendered;      // rndered data
     int init;               // 1 if initialized
 
     int current_frame;      // currently parsed frame
 
     char * data_field;      // data field name
-    char * data;            // data field content
-    char * sbeg;            // begin marker
-    char * send;            // end marker
+    char * xml_data;        // data field content (xml data)
+    int framestep;
 
     int producer_type;      // 1 - kdenlivetitle
     mlt_producer producer;  // hold producer pointer
@@ -68,34 +66,26 @@ typedef struct {
 
 twcont * twcont_clean(twcont* cont)
 {
-    for (int i = 0; i < cont->size; ++i)
-    {
-        twdata * data = cont->arr[i];
-        tw_delete(data->tw);
-        data->tw = NULL;
-        free(data);
-    }
-
-    free (cont->arr);
+    if (cont->rendered)
+        tw_delete(cont->rendered->tw);
+    free (cont->rendered);
     free (cont->data_field);
-    free (cont->data);
-    free (cont->sbeg);
-    free (cont->send);
+    free (cont->xml_data);
 
-    cont->arr = NULL;
-    cont->size = 0;
-    cont->limit = 0;
+    cont->rendered = NULL;
     cont->init = 0;
     cont->current_frame = -1;
     cont->data_field = NULL;
-    cont->data = NULL;
-    cont->sbeg = NULL;
-    cont->send = NULL;
+    cont->xml_data = NULL;
+    cont->framestep = 0;
     cont->producer_type = 0;
     cont->producer = NULL;
     return cont;
 }
 
+/*
+ * Init the tw container.
+ */
 twcont * twcont_init()
 {
     twcont* cont = (twcont*)calloc( 1, sizeof(twcont) );
@@ -103,27 +93,32 @@ twcont * twcont_init()
     return cont;
 }
 
-void twcont_resize(twcont * twc) {
-    if (twc->size < twc->limit)
-        return;
-
-    twc->limit += 10;
-    twdata ** arr2 = (twdata**) calloc( twc->limit, sizeof(twdata*) );
-    memset(arr2, 0, twc->limit * sizeof(twdata*));
-    memcpy(arr2, twc->arr, twc->size * sizeof(twdata*));
-    free(twc->arr);
-    twc->arr = arr2;
-}
-
+/*
+ * Init the tw data.
+ */
 twdata * twdata_init()
 {
     twdata * data = (twdata*) calloc( 1, sizeof(twdata) );
     data->tw = tw_init();
-    data->idx_beg = -1;
-    data->idx_end = -1;
     return data;
 }
 
+/*
+ * Find content node in the xml data.
+ */
+xmlNodePtr find_content_node(xmlDocPtr * doc, const char * d);
+/*
+ * Get <content></content> node value.
+ */
+xmlChar * xml_get_content(const char * d);
+/*
+ * Set <content></content> node value.
+ */
+xmlChar * xml_set_content(const char * d, const xmlChar * text);
+
+/*
+ * Get data for display.
+ */
 static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, twcont * cont)
 {
     if (cont == NULL)
@@ -131,11 +126,14 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
     char data_field[200];
     char * d = NULL;
-    char * str_beg = NULL;
-    char * str_end = NULL;
+    int framestep = 0;
 
     mlt_producer producer = NULL;
     mlt_properties producer_properties = NULL;
+
+    xmlChar *key = 0;
+
+    uint update_mask = 0;
 
     // fake loop, break after one loop
     while (1)
@@ -153,28 +151,24 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
             strcpy(data_field, "xmldata");
             d = mlt_properties_get( producer_properties, data_field );
-            str_beg = mlt_properties_get( filter_p, "beg" );
-            str_end = mlt_properties_get( filter_p, "end" );
+            framestep = atoi(mlt_properties_get(filter_p, "framestep"));
 
+            // Get content data and backup in the tw container.
+            key = xml_get_content(d);
             int res_d = -1;
-            if (cont->data && d)
-                res_d = strcmp(cont->data, d);
+            if (cont->xml_data && d)
+                res_d = strcmp(cont->xml_data, d);
 
-            int res_sb = -1;
-            if (cont->sbeg && str_beg)
-                res_sb = strcmp(cont->sbeg, str_beg);
+            // if xml data changed, set update mask 0x1
+            if (res_d != 0)
+                update_mask = 0x1;
 
-            int res_se = -1;
-            if (cont->send && str_end)
-                res_se = strcmp(cont->send, str_end);
+            if (framestep != cont->framestep)
+                update_mask |= 0x2;
 
-            if ((res_d != 0) || (res_sb != 0) || (res_se != 0))
-            {
-                twcont_clean(cont);
-            }
-
-            cont->producer_type = 1;
-            cont->producer = producer;
+            // clear and prepare for new parsing
+            if (0 == update_mask)
+                return 1;
             break;
         }
 
@@ -187,114 +181,38 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
     if (d == NULL)
         return 0;
 
-    const char * c = d;
-    int len_beg = strlen(str_beg);
-    int len_end = strlen(str_end);
-    int i = 0;
-    int i_beg = -1;
-    int i_end = -1;
-
-    while (*c != '\0')
+    if (update_mask & 0x1)
     {
-        // check first character
-        if (*c != str_beg[0])
-        {
-            ++i;
-            ++c;
-            continue;
-        }
+        twcont_clean(cont);
+        twdata * data = twdata_init();
 
-        // check full pattern
-        if (strncmp(str_beg, c, len_beg) != 0)
-        {
-            ++i;
-            ++c;
-            continue;
-        }
+        // save new data field name
+        if (cont->data_field) free(cont->data_field);
+        cont->data_field = malloc(strlen(data_field)+1);
+        strcpy(cont->data_field, data_field);
 
-        i_beg = i;
+        // save new xml data
+        if (cont->xml_data) free(cont->xml_data);
+        cont->xml_data = malloc(strlen(d)+1);
+        strcpy(cont->xml_data, d);
 
-        i += len_beg;
-        c += len_beg;
+        cont->framestep = framestep;
+        tw_setPattern(data->tw, (char*)key);
+        tw_parse(data->tw);
+        cont->rendered = data;
 
-        while (*c != '\0')
-        {
-            // check first character
-            if (*c != str_end[0])
-            {
-                ++i;
-                ++c;
-                continue;
-            }
-
-            // check full pattern
-            if (strncmp(str_end, c, len_end) != 0)
-            {
-                ++i;
-                ++c;
-                continue;
-            }
-
-            i += len_end;
-            c += len_end;
-
-            i_end = i;
-
-            break;
-        }
-
-        int len = 0;
-        char * buff = NULL;
-        if (i_beg == -1 || i_end == -1)
-        {
-            len = 0;
-            buff = malloc(len+1);
-            memset(buff, 0, len+1);
-        }
-        else
-        {
-            len = i_end - i_beg - len_beg - len_end;    // length of pattern w/o markers
-            buff = malloc(len+1);
-            memset(buff, 0, len+1);
-            strncpy(buff, d + i_beg + len_beg, len);
-
-            twdata * data = twdata_init();
-            tw_setPattern(data->tw, buff);
-
-            /*int res =*/ tw_parse(data->tw);
-
-            data->idx_beg = i_beg;
-            data->idx_end = i_end;
-
-            twcont_resize(cont);
-            cont->arr[cont->size] = data;
-            ++cont->size;
-        }
-
-        cont->sbeg = malloc(len_beg+1);
-        cont->send = malloc(len_end+1);
-        memset(cont->sbeg, 0, len_beg+1);
-        memset(cont->send, 0, len_end+1);
-
-        strcpy(cont->sbeg, str_beg);
-        strcpy(cont->send, str_end);
-
-        free(buff);
-
-        i_beg = -1;
-        i_end = -1;
+        cont->producer_type = 1;
+        cont->producer = producer;
+    }
+    else if (update_mask & 0x2)
+    {
+        cont->framestep = framestep;
     }
 
-    if (cont->data_field) free(cont->data_field);
-    cont->data_field = malloc(strlen(data_field)+1);
-    strcpy(cont->data_field, data_field);
-
-    if (cont->data) free(cont->data);
-    cont->data = malloc(strlen(d)+1);
-    strcpy(cont->data, d);
-
+    // mark as inited
     cont->init = 1;
 
+    xmlFree(key);
     return 1;
 }
 
@@ -320,35 +238,16 @@ static int update_producer(mlt_frame frame, mlt_properties frame_p, twcont * con
 
     if (restore == 1)
     {
-        mlt_properties_set( producer_properties, cont->data_field, cont->data );
+        mlt_properties_set( producer_properties, cont->data_field, cont->xml_data );
         return 1;
     }
 
-    int len_data = strlen(cont->data);
-    char * buff_data = malloc(len_data+1);
-    if (!buff_data)
-    {
-        printf("Cannot allocate memory, exiting\n");
-        exit(0);
-    }
-    strcpy(buff_data, cont->data);
+    // render the string and set as a content value
+    const char * buff_render = tw_render(cont->rendered->tw, pos/cont->framestep);
+    xmlChar * dump = xml_set_content(cont->xml_data, (xmlChar*)buff_render);
 
-    for (int i = cont->size - 1; i >= 0; --i)
-    {
-        twdata * data = cont->arr[i];
-        int len = data->idx_end - data->idx_beg;
-        const char * buff_render = tw_render(data->tw, pos);
-        int len_render = strlen(buff_render);
-
-        char * tmp_buff = malloc(len_data+1);
-        strcpy(tmp_buff, buff_data);
-        strncpy(buff_data + data->idx_beg, buff_render, len_render);
-        strcpy(buff_data + data->idx_beg + len_render, tmp_buff + data->idx_end);
-        free(tmp_buff);
-    }
-    mlt_properties_set( producer_properties, cont->data_field, buff_data );
-
-    free(buff_data);
+    // update producer for rest of the frame
+    mlt_properties_set( producer_properties, cont->data_field, (char *)dump );
 
     cont->current_frame = pos;
 
@@ -404,4 +303,79 @@ mlt_filter filter_typewriter_init( mlt_profile profile, mlt_service_type type, c
         filter->close = filter_close;
     }
     return filter;
+}
+
+
+xmlNodePtr find_content_node(xmlDocPtr * doc, const char * d) {
+    xmlNodePtr cur;
+
+    // load xml from memory to the model
+    *doc = xmlReadMemory(d, strlen(d), "noname.xml", NULL, 0);
+    if (*doc == NULL) {
+        fprintf(stderr, "Failed to parse document\n");
+        return 0;
+    }
+
+    cur = xmlDocGetRootElement(*doc);
+
+    if (cur == NULL) {
+        fprintf(stderr,"empty document\n");
+        xmlFreeDoc(*doc);
+        return 0;
+    }
+
+    // czeck the top level
+    if (xmlStrcmp(cur->name, (const xmlChar *) "kdenlivetitle")) {
+        fprintf(stderr,"document of the wrong type, root node != story\n");
+        xmlFreeDoc(*doc);
+        return 0;
+    }
+
+    // serch for item node
+    cur = cur->xmlChildrenNode;
+    while (cur != NULL) {
+        if ((!xmlStrcmp(cur->name, (const xmlChar *)"item"))) {
+            // search for content node
+            cur = cur->xmlChildrenNode;
+            while (cur != NULL) {
+                if ((!xmlStrcmp(cur->name, (const xmlChar *)"content")))
+                    return cur;
+
+                cur = cur->next;
+            }
+            break;
+        }
+        cur = cur->next;
+    }
+
+    return cur;
+}
+
+xmlChar * xml_get_content(const char * d) {
+    xmlDocPtr doc = 0;
+    xmlNodePtr node = find_content_node(&doc, d);
+    xmlChar * buff = 0;
+    if (node) {
+        xmlChar * key = xmlNodeGetContent(node->xmlChildrenNode);
+        buff = malloc(xmlStrlen(key)+1);
+        strcpy((char*)buff, (char*)key);
+        xmlFree(key);
+    }
+
+    return buff;
+}
+
+xmlChar * xml_set_content(const char * d, const xmlChar * text) {
+    xmlDocPtr doc = 0;
+    xmlNodePtr node = find_content_node(&doc, d);
+    xmlChar * buff = 0;
+    int len;
+
+    if (node) {
+        xmlNodeSetContent(node, text);
+    }
+    xmlDocDumpMemory(doc, &buff, &len);
+
+    xmlFreeDoc(doc);
+    return buff;
 }

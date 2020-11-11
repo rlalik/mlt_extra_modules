@@ -25,14 +25,14 @@ extern mlt_filter filter_typewriter_init( mlt_profile profile, mlt_service_type 
 
 static mlt_properties typewriter_metadata( mlt_service_type type, const char *id, void *data )
 {
-	char file[ PATH_MAX ];
-	snprintf( file, PATH_MAX, "%s/rl/filter_%s.yml", mlt_environment( "MLT_DATA" ), id );
-	return mlt_properties_parse_yaml( file );
+    char file[ PATH_MAX ];
+    snprintf( file, PATH_MAX, "%s/rl/filter_%s.yml", mlt_environment( "MLT_DATA" ), id );
+    return mlt_properties_parse_yaml( file );
 }
 
 MLT_REPOSITORY
 {
-	MLT_REGISTER( filter_type, "typewriter", filter_typewriter_init );
-	
-	MLT_REGISTER_METADATA( filter_type, "typewriter", typewriter_metadata, NULL );	
+    MLT_REGISTER( filter_type, "typewriter", filter_typewriter_init );
+
+    MLT_REGISTER_METADATA( filter_type, "typewriter", typewriter_metadata, NULL );
 }
