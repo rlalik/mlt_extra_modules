@@ -51,7 +51,9 @@ typedef struct {
 } twdata;
 
 typedef struct {
-    twdata * rendered;      // rndered data
+    twdata ** renders;      // rendered data [array]
+    int size;               // size of array
+    int limit;              // max size of array
     int init;               // 1 if initialized
 
     int current_frame;      // currently parsed frame
@@ -66,13 +68,21 @@ typedef struct {
 
 twcont * twcont_clean(twcont* cont)
 {
-    if (cont->rendered)
-        tw_delete(cont->rendered->tw);
-    free (cont->rendered);
+    for (int i = 0; i < cont->size; ++i)
+    {
+        twdata * data = cont->renders[i];
+        tw_delete(data->tw);
+        data->tw = NULL;
+        free(data);
+    }
+
+    free (cont->renders);
     free (cont->data_field);
     free (cont->xml_data);
 
-    cont->rendered = NULL;
+    cont->renders = NULL;
+    cont->size = 0;
+    cont->limit = 0;
     cont->init = 0;
     cont->current_frame = -1;
     cont->data_field = NULL;
@@ -104,17 +114,32 @@ twdata * twdata_init()
 }
 
 /*
+ * Resize the renders array.
+ */
+void twcont_resize(twcont * twc) {
+    if (twc->size < twc->limit)
+        return;
+
+    twc->limit += 10;
+    twdata ** arr2 = (twdata**) calloc( twc->limit, sizeof(twdata*) );
+    memset(arr2, 0, twc->limit * sizeof(twdata*));
+    memcpy(arr2, twc->renders, twc->size * sizeof(twdata*));
+    free(twc->renders);
+    twc->renders = arr2;
+}
+
+/*
  * Find content node in the xml data.
  */
-xmlNodePtr find_content_node(xmlDocPtr * doc, const char * d);
+xmlNodePtr find_content_node(xmlDocPtr * doc, xmlNodePtr cur, const char * d, int from_begining);
 /*
  * Get <content></content> node value.
  */
-xmlChar * xml_get_content(const char * d);
+xmlChar * xml_get_content(xmlDocPtr * doc, const char * d, int from_begining);
 /*
  * Set <content></content> node value.
  */
-xmlChar * xml_set_content(const char * d, const xmlChar * text);
+int xml_set_content(xmlDocPtr * doc, const char * d, const xmlChar * text, int from_begining);
 
 /*
  * Get data for display.
@@ -153,8 +178,6 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
             d = mlt_properties_get( producer_properties, data_field );
             framestep = atoi(mlt_properties_get(filter_p, "framestep"));
 
-            // Get content data and backup in the tw container.
-            key = xml_get_content(d);
             int res_d = -1;
             if (cont->xml_data && d)
                 res_d = strcmp(cont->xml_data, d);
@@ -165,7 +188,7 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
             if (framestep != cont->framestep)
                 update_mask |= 0x2;
-            printf("mask = 0x%x\n", update_mask);
+
             // clear and prepare for new parsing
             if (0 == update_mask)
                 return 1;
@@ -176,7 +199,6 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
     if (update_mask & 0x1)
     {
         twcont_clean(cont);
-        twdata * data = twdata_init();
 
         // save new data field name
         if (!cont->data_field || strlen(cont->data_field) < strlen(data_field))
@@ -195,9 +217,20 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
         strcpy(cont->xml_data, d);
 
         cont->framestep = framestep;
-        tw_setPattern(data->tw, (char*)key);
-        tw_parse(data->tw);
-        cont->rendered = data;
+
+        // Get content data and backup in the tw container.
+        xmlDocPtr doc;
+        while ((key = xml_get_content(&doc, d, (0 == cont->size))))
+        {
+            twdata * data = twdata_init();
+            tw_setPattern(data->tw, (char*)key);
+            tw_parse(data->tw);
+
+            twcont_resize(cont);
+            cont->renders[cont->size] = data;
+            ++cont->size;
+        }
+        xml_get_content(NULL, NULL, -1);
 
         cont->producer_type = 1;
         cont->producer = producer;
@@ -241,11 +274,21 @@ static int update_producer(mlt_frame frame, mlt_properties frame_p, twcont * con
     }
 
     // render the string and set as a content value
-    const char * buff_render = tw_render(cont->rendered->tw, pos/cont->framestep);
-    xmlChar * dump = xml_set_content(cont->xml_data, (xmlChar*)buff_render);
+    xmlDocPtr doc;
+    for (int i = 0; i < cont->size; ++i) {
+        const char * buff_render = tw_render(cont->renders[i]->tw, pos/cont->framestep);
+        int res = xml_set_content(&doc, cont->xml_data, (xmlChar*)buff_render, !i);
+        if (0 == res)
+            break;
+    }
+    xml_set_content(NULL, NULL, NULL, -1);
 
+    xmlChar * dump = NULL;
+    int len;
+    xmlDocDumpMemory(doc, &dump, &len);
     // update producer for rest of the frame
     mlt_properties_set( producer_properties, cont->data_field, (char *)dump );
+    xmlFreeDoc(doc);
 
     cont->current_frame = pos;
 
@@ -263,7 +306,7 @@ static int filter_get_image( mlt_frame frame, uint8_t **image, mlt_image_format 
     twcont * cont = (twcont*) filter->child;
 
     int res = get_producer_data(properties, frame_properties, cont);
-    if ( res == 0)
+    if (res == 0)
         return mlt_frame_get_image( frame, image, format, width, height, 1 );
 
     update_producer(frame, frame_properties, cont, 0);
@@ -304,74 +347,95 @@ mlt_filter filter_typewriter_init( mlt_profile profile, mlt_service_type type, c
 }
 
 
-xmlNodePtr find_content_node(xmlDocPtr * doc, const char * d) {
-    xmlNodePtr cur;
-
+xmlNodePtr find_content_node(xmlDocPtr * doc, xmlNodePtr cur, const char * d, int from_begining) {
     // load xml from memory to the model
-    *doc = xmlReadMemory(d, strlen(d), "noname.xml", NULL, 0);
-    if (*doc == NULL) {
-        fprintf(stderr, "Failed to parse document\n");
-        return 0;
+    if (from_begining)
+    {
+        *doc = xmlReadMemory(d, strlen(d), "noname.xml", NULL, 0);
+        if (*doc == NULL) {
+            fprintf(stderr, "Failed to parse document\n");
+            return NULL;
+        }
+
+        xmlFreeNode(cur);
+        cur = xmlDocGetRootElement(*doc);
+
+        if (cur == NULL) {
+            fprintf(stderr,"empty document\n");
+            return NULL;
+        }
+
+        // czeck the top level
+        if (xmlStrcmp(cur->name, (const xmlChar *) "kdenlivetitle")) {
+            fprintf(stderr,"document of the wrong type, root node != story\n");
+            return NULL;
+        }
+
+        // serch for item node
+        cur = cur->children;
     }
 
-    cur = xmlDocGetRootElement(*doc);
-
-    if (cur == NULL) {
-        fprintf(stderr,"empty document\n");
-        xmlFreeDoc(*doc);
-        return 0;
-    }
-
-    // czeck the top level
-    if (xmlStrcmp(cur->name, (const xmlChar *) "kdenlivetitle")) {
-        fprintf(stderr,"document of the wrong type, root node != story\n");
-        xmlFreeDoc(*doc);
-        return 0;
-    }
-
-    // serch for item node
-    cur = cur->xmlChildrenNode;
     while (cur != NULL) {
         if ((!xmlStrcmp(cur->name, (const xmlChar *)"item"))) {
             // search for content node
-            cur = cur->xmlChildrenNode;
+            cur = cur->children;
             while (cur != NULL) {
                 if ((!xmlStrcmp(cur->name, (const xmlChar *)"content")))
                     return cur;
 
                 cur = cur->next;
             }
-            break;
         }
-        cur = cur->next;
+        else
+        {
+            cur = cur->next;
+        }
     }
 
     return cur;
 }
 
-xmlChar * xml_get_content(const char * d) {
-    xmlDocPtr doc = 0;
-    xmlNodePtr node = find_content_node(&doc, d);
-    xmlChar * buff = 0;
-    if (node) {
-        buff = xmlNodeGetContent(node->xmlChildrenNode);
+xmlChar * xml_get_content(xmlDocPtr * doc, const char * d, int from_begining) {
+    static xmlNodePtr node = NULL;
+
+    if (from_begining < 0)
+    {
+        node = NULL;
+        return NULL;
     }
 
-    xmlFreeDoc(doc);
+    node = find_content_node(doc, node, d, from_begining || !node);
+
+    if (NULL == node)
+        return NULL;
+
+    xmlChar * buff = NULL;
+    if (node) {
+        buff = xmlNodeGetContent(node->xmlChildrenNode);
+        node = node->parent->next;
+    }
+
     return buff;
 }
 
-xmlChar * xml_set_content(const char * d, const xmlChar * text) {
-    xmlDocPtr doc = 0;
-    xmlNodePtr node = find_content_node(&doc, d);
-    xmlChar * buff = 0;
-    int len;
+int xml_set_content(xmlDocPtr * doc, const char * d, const xmlChar * text, int from_begining) {
+    static xmlNodePtr node = NULL;
+
+    if (from_begining < 0)
+    {
+        node = NULL;
+        return 0;
+    }
+
+    node = find_content_node(doc, node, d, from_begining || !node);
+
+    if (NULL == node)
+        return 0;
 
     if (node) {
         xmlNodeSetContent(node, text);
+        node = node->parent->next;
     }
-    xmlDocDumpMemory(doc, &buff, &len);
 
-    xmlFreeDoc(doc);
-    return buff;
+    return 1;
 }

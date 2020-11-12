@@ -1,3 +1,11 @@
+2020-11-12  Rafał Lalik <rafallalik@gmail.com>
+
+  * Version 0.1.1
+  * Fix clip update regression
+  * Support for multi textfields in the clip
+  * In the kdenlive effect the minimal number of framesteps is no 1 as 0
+    makes no sense.
+
 2020-11-11  Rafał Lalik <rafallalik@gmail.com>
 
   * Version 0.1.0
