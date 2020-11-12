@@ -106,11 +106,11 @@ build_config()
         Linux|GNU/kFreeBSD|GNU)
         [ "$optimisations" = "true" ] &&
             echo "OPTIMISATIONS+=-ffast-math"
-        echo "CFLAGS+=-fPIC -pthread $(xml2-config --cflags)"
+        echo "CFLAGS+=-fPIC -pthread"
         echo "SHFLAGS=-shared"
         echo "LIBDL=-ldl"
         echo "RDYNAMIC=-rdynamic"
-        echo "LDFLAGS+=-Wl,--no-undefined -Wl,--as-needed $(xml2-config --libs)"
+        echo "LDFLAGS+=-Wl,--no-undefined -Wl,--as-needed"
         ;;
         FreeBSD)
         [ "$optimisations" = "true" ] &&

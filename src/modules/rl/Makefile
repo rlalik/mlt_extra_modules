@@ -1,17 +1,18 @@
+include ../../../config.mak
+include config.mak
+
 CFLAGS += $(shell pkg-config mlt-framework --cflags)
 CXXFLAGS += $(shell pkg-config mlt-framework --cflags)
 
 CFLAGS += -I../..
 
-CXXFLAGS := $(CXXFLAGS) $(CFLAGS) -fPIC
+CXXFLAGS := $(QTCXXFLAGS) $(CXXFLAGS) $(CFLAGS) -fPIC
 
 ifneq (, $(shell $(CXX) --version | grep -is g++))
     CXXFLAGS += --std=c++11
 endif
 
-LDFLAGS += -L../../framework -lmlt -lm
-
-include ../../../config.mak
+LDFLAGS += $(QTLIBS) -lmlt -lm
 
 TARGET = ../libmltrl$(LIBSUF)
 
@@ -20,7 +21,8 @@ OBJS = factory.o \
 
 CPPOBJS = typewriter.o \
 	   parsing_functions.o \
-	   c_functions.o
+	   c_functions.o \
+	   xmlparser.o
 
 SRCS := $(OBJS:.o=.c) $(CPPOBJS:.o=.cpp)
 

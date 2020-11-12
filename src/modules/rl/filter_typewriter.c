@@ -26,10 +26,8 @@
 #include <string.h>
 #include <math.h>
 
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-
 #include "typewriter.h"
+#include "xmlparser.h"
 
 struct producer_ktitle_s
 {
@@ -51,6 +49,8 @@ typedef struct {
 } twdata;
 
 typedef struct {
+    XmlParser * xp;
+
     twdata ** renders;      // rendered data [array]
     int size;               // size of array
     int limit;              // max size of array
@@ -68,6 +68,11 @@ typedef struct {
 
 twcont * twcont_clean(twcont* cont)
 {
+    if (cont->xp)
+        xp_delete(cont->xp);
+
+    cont->xp = xp_init();
+
     for (int i = 0; i < cont->size; ++i)
     {
         twdata * data = cont->renders[i];
@@ -129,19 +134,6 @@ void twcont_resize(twcont * twc) {
 }
 
 /*
- * Find content node in the xml data.
- */
-xmlNodePtr find_content_node(xmlDocPtr * doc, xmlNodePtr cur, const char * d, int from_begining);
-/*
- * Get <content></content> node value.
- */
-xmlChar * xml_get_content(xmlDocPtr * doc, const char * d, int from_begining);
-/*
- * Set <content></content> node value.
- */
-int xml_set_content(xmlDocPtr * doc, const char * d, const xmlChar * text, int from_begining);
-
-/*
  * Get data for display.
  */
 static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, twcont * cont)
@@ -155,8 +147,6 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
     mlt_producer producer = NULL;
     mlt_properties producer_properties = NULL;
-
-    xmlChar *key = 0;
 
     uint update_mask = 0;
 
@@ -219,18 +209,22 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
         cont->framestep = framestep;
 
         // Get content data and backup in the tw container.
-        xmlDocPtr doc;
-        while ((key = xml_get_content(&doc, d, (0 == cont->size))))
+        xp_setDocument(cont->xp, d);
+        xp_parse(cont->xp);
+        uint n = xp_getContentNodesNumber(cont->xp);
+
+        for (int i = 0; i < n; ++i)
         {
+            char * key = xp_getNodeContent(cont->xp, i);
             twdata * data = twdata_init();
-            tw_setPattern(data->tw, (char*)key);
+            tw_setPattern(data->tw, key);
             tw_parse(data->tw);
 
             twcont_resize(cont);
             cont->renders[cont->size] = data;
             ++cont->size;
+            free(key);
         }
-        xml_get_content(NULL, NULL, -1);
 
         cont->producer_type = 1;
         cont->producer = producer;
@@ -243,7 +237,6 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
         cont->framestep = framestep;
     }
 
-    xmlFree(key);
     return 1;
 }
 
@@ -274,21 +267,16 @@ static int update_producer(mlt_frame frame, mlt_properties frame_p, twcont * con
     }
 
     // render the string and set as a content value
-    xmlDocPtr doc;
-    for (int i = 0; i < cont->size; ++i) {
+    uint n = xp_getContentNodesNumber(cont->xp);
+    for (int i = 0; i < n; ++i) {
         const char * buff_render = tw_render(cont->renders[i]->tw, pos/cont->framestep);
-        int res = xml_set_content(&doc, cont->xml_data, (xmlChar*)buff_render, !i);
-        if (0 == res)
-            break;
+        xp_setNodeContent(cont->xp, i, buff_render);
     }
-    xml_set_content(NULL, NULL, NULL, -1);
 
-    xmlChar * dump = NULL;
-    int len;
-    xmlDocDumpMemory(doc, &dump, &len);
     // update producer for rest of the frame
-    mlt_properties_set( producer_properties, cont->data_field, (char *)dump );
-    xmlFreeDoc(doc);
+    char * dom = xp_getDocument(cont->xp);
+    mlt_properties_set( producer_properties, cont->data_field, dom );
+    free(dom);
 
     cont->current_frame = pos;
 
@@ -344,98 +332,4 @@ mlt_filter filter_typewriter_init( mlt_profile profile, mlt_service_type type, c
         filter->close = filter_close;
     }
     return filter;
-}
-
-
-xmlNodePtr find_content_node(xmlDocPtr * doc, xmlNodePtr cur, const char * d, int from_begining) {
-    // load xml from memory to the model
-    if (from_begining)
-    {
-        *doc = xmlReadMemory(d, strlen(d), "noname.xml", NULL, 0);
-        if (*doc == NULL) {
-            fprintf(stderr, "Failed to parse document\n");
-            return NULL;
-        }
-
-        xmlFreeNode(cur);
-        cur = xmlDocGetRootElement(*doc);
-
-        if (cur == NULL) {
-            fprintf(stderr,"empty document\n");
-            return NULL;
-        }
-
-        // czeck the top level
-        if (xmlStrcmp(cur->name, (const xmlChar *) "kdenlivetitle")) {
-            fprintf(stderr,"document of the wrong type, root node != story\n");
-            return NULL;
-        }
-
-        // serch for item node
-        cur = cur->children;
-    }
-
-    while (cur != NULL) {
-        if ((!xmlStrcmp(cur->name, (const xmlChar *)"item"))) {
-            // search for content node
-            cur = cur->children;
-            while (cur != NULL) {
-                if ((!xmlStrcmp(cur->name, (const xmlChar *)"content")))
-                    return cur;
-
-                cur = cur->next;
-            }
-        }
-        else
-        {
-            cur = cur->next;
-        }
-    }
-
-    return cur;
-}
-
-xmlChar * xml_get_content(xmlDocPtr * doc, const char * d, int from_begining) {
-    static xmlNodePtr node = NULL;
-
-    if (from_begining < 0)
-    {
-        node = NULL;
-        return NULL;
-    }
-
-    node = find_content_node(doc, node, d, from_begining || !node);
-
-    if (NULL == node)
-        return NULL;
-
-    xmlChar * buff = NULL;
-    if (node) {
-        buff = xmlNodeGetContent(node->xmlChildrenNode);
-        node = node->parent->next;
-    }
-
-    return buff;
-}
-
-int xml_set_content(xmlDocPtr * doc, const char * d, const xmlChar * text, int from_begining) {
-    static xmlNodePtr node = NULL;
-
-    if (from_begining < 0)
-    {
-        node = NULL;
-        return 0;
-    }
-
-    node = find_content_node(doc, node, d, from_begining || !node);
-
-    if (NULL == node)
-        return 0;
-
-    if (node) {
-        xmlNodeSetContent(node, text);
-        node = node->parent->next;
-    }
-
-    return 1;
 }

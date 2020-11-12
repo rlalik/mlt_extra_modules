@@ -24,6 +24,7 @@
  */
 
 #include "typewriter.h"
+#include "xmlparser.h"
 
 #include <cstring>
 
@@ -92,4 +93,52 @@ void tw_clear(TypeWriter * tw)
 void tw_debug(TypeWriter * tw)
 {
     tw->debug();
+}
+
+
+XmlParser * xp_init()
+{
+    XmlParser *xp = new XmlParser;
+    return xp;
+}
+
+void xp_delete(XmlParser * xp)
+{
+    delete (XmlParser *) xp;
+    xp = 0;
+}
+
+void xp_setDocument(XmlParser * xp, const char * str)
+{
+    return xp->setDocument(str);
+}
+
+int xp_parse(XmlParser * xp)
+{
+    return xp->parse();
+}
+
+int xp_getContentNodesNumber(XmlParser * xp)
+{
+    return xp->getContentNodesNumber();
+}
+
+char * xp_getNodeContent(XmlParser * xp, uint i)
+{
+    return xp->getNodeContent(i);
+}
+
+void xp_setNodeContent(XmlParser * xp, uint i, const char * str)
+{
+    return xp->setNodeContent(i, str);
+}
+
+char * xp_getDocument(XmlParser * xp)
+{
+    return xp->getDocument();
+}
+
+void xp_printDoc(XmlParser * xp)
+{
+    return xp->printDoc();
 }
