@@ -50,6 +50,21 @@ unsigned int tw_getFrameRate(TypeWriter * tw)
     return tw->getFrameRate();
 }
 
+void tw_setFrameStep(TypeWriter * tw, unsigned int fs)
+{
+    tw->setFrameStep(fs);
+}
+
+void tw_setStepSigma(TypeWriter * tw, float ss)
+{
+    tw->setStepSigma(ss);
+}
+
+void tw_setStepSeed(TypeWriter * tw, unsigned int ss)
+{
+    tw->setStepSeed(ss);
+}
+
 void tw_setPattern(TypeWriter * tw, const char * str)
 {
     tw->setPattern(str);

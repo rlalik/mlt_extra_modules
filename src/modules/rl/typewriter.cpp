@@ -26,12 +26,16 @@
 #include "typewriter.h"
 #include <string>
 #include <sstream>
+#include <cmath>
 
 using namespace std;
 
 std::string null_string;
 
-TypeWriter::TypeWriter() : frame_rate(25), parsing_err(0), last_used_idx(-1)
+TypeWriter::TypeWriter()
+    : frame_rate(25)
+    , frame_step(1)
+    , parsing_err(0), last_used_idx(-1)
 {
 }
 
@@ -54,6 +58,10 @@ int TypeWriter::parse()
 {
     clear();
 
+    gen.seed(step_seed);
+    d = std::normal_distribution<>{0, step_sigma};
+
+    previous_total_frame = -1;
     int start_frame = 0;
     parsing_err = parseString(raw_string, start_frame);
     return parsing_err;
@@ -84,17 +92,36 @@ uint TypeWriter::getOrInsertFrame(uint frame)
     // by design last->frame cannot be larger than frame
     // take the last frame then FIXME: should we break parser here?
 
+    int real_frame = frame * frame_step;
+
     uint n = frames.size();
     if (!n)
     {
-        frames.push_back(Frame(frame));
+        int s = std::round(d(gen));
+
+        if ((s + real_frame) > 0)
+            real_frame += s;
+        if (real_frame <= previous_total_frame)
+            real_frame = previous_total_frame+1;
+        previous_total_frame = real_frame;
+
+        frames.push_back(Frame(frame, real_frame));
         return 0;
     }
 
     if (frames[n-1].frame >= frame)
         return n-1;
 
-    Frame f = Frame(frame);
+    int s = std::round(d(gen));
+
+    if ((s + real_frame) > 0)
+        real_frame += s;
+    if (real_frame <= previous_total_frame)
+        real_frame = previous_total_frame+1;
+    previous_total_frame = real_frame;
+
+
+    Frame f = Frame(frame, real_frame);
     f.s = frames[n-1].s;
     frames.push_back(f);
 
@@ -135,16 +162,16 @@ const std::string & TypeWriter::render(uint frame)
     Frame f = frames[last_used_idx];
 
     // but if current is ahead 'frame', start from beginning
-    if (f.frame > frame)
+    if (f.real_frame > frame)
         last_used_idx = 0;
 
-    if (frames[last_used_idx].frame > frame)
+    if (frames[last_used_idx].real_frame > frame)
         return null_string;
 
     for (; last_used_idx < (int)n-1; ++last_used_idx)
     {
         f = frames[last_used_idx+1];
-        if (f.frame > frame)
+        if (f.real_frame > frame)
             return frames[last_used_idx].s;
     }
 
@@ -189,15 +216,15 @@ void TypeWriter::addBypass(uint idx)
         frames[idx].s.clear();
 }
 
-Frame::Frame(uint frame) : frame(frame), bypass(-2)
+Frame::Frame(uint frame, uint real_frame) : frame(frame), real_frame(real_frame), bypass(-2)
 {
 }
 
 void Frame::print()
 {
-    printf("%c [%d] %s %c\n",
+    printf("%c [%d] (%d) %s %c\n",
            true ? '-' : '|',
-           frame, s.c_str(),
+           frame, real_frame, s.c_str(),
            true ? '-' : '|');
 }
 

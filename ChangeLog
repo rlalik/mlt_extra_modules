@@ -1,5 +1,11 @@
 2020-11-12  Rafał Lalik <rafallalik@gmail.com>
 
+  * Version 0.2.0
+  * The xml parser is based on Qt(4,5)Xml. No longer dependency of libxml.
+  * Plugin allows to fluctuate frame numbers with normal distributions.
+
+2020-11-12  Rafał Lalik <rafallalik@gmail.com>
+
   * Version 0.1.1
   * Fix clip update regression
   * Support for multi textfields in the clip

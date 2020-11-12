@@ -30,14 +30,16 @@
 
 #include <string>
 #include <vector>
+#include <random>
 
 using namespace std;
 
 struct Frame
 {
-    Frame(uint frame);
+    Frame(uint frame, uint real_frame);
 
     uint frame;
+    uint real_frame;
     std::string s;
     int bypass;
 
@@ -52,6 +54,15 @@ public:
 
     void setFrameRate(uint fr) { frame_rate = fr; }
     uint getFrameRate() const { return frame_rate; }
+
+    void setFrameStep(uint fs) { frame_step = fs; }
+    uint getFrameStep() const { return frame_step; }
+
+    void setStepSigma(float ss) { step_sigma = ss; }
+    uint getStepSigma() const { return step_sigma; }
+
+    void setStepSeed(float ss) { step_seed = ss; }
+    uint getStepSeed() const { return step_seed; }
 
     void setPattern(const std::string & str);
     const std::string & getPattern() const { return raw_string; }
@@ -87,12 +98,20 @@ private:
 
 private:
     size_t frame_rate;
+    size_t frame_step;
+    float step_sigma;
+    size_t step_seed;
     int parsing_err;
+    int previous_total_frame;
 
     std::string raw_string;
 
     std::vector<Frame> frames;
     int last_used_idx;
+
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<> d;
 };
 
 #else
@@ -110,6 +129,9 @@ extern TypeWriter * tw_init();
 extern void tw_delete(TypeWriter * tw);
 extern void tw_setFrameRate(TypeWriter * tw, unsigned int fr);
 extern unsigned int tw_getFrameRate(TypeWriter * tw);
+extern void tw_setFrameStep(TypeWriter * tw, unsigned int fs);
+extern void tw_setStepSigma(TypeWriter * tw, float ss);
+extern void tw_setStepSeed(TypeWriter * tw, unsigned int ss);
 extern void tw_setPattern(TypeWriter * tw, const char * str);
 extern const char * tw_getPattern(TypeWriter * tw);
 extern int tw_parse(TypeWriter * tw);
