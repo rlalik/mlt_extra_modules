@@ -165,21 +165,13 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
             if (framestep != cont->framestep)
                 update_mask |= 0x2;
-
+            printf("mask = 0x%x\n", update_mask);
             // clear and prepare for new parsing
             if (0 == update_mask)
                 return 1;
             break;
         }
-
-        break;
     }
-
-    if (cont->init != 0)
-        return 1;
-
-    if (d == NULL)
-        return 0;
 
     if (update_mask & 0x1)
     {
@@ -187,13 +179,19 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
         twdata * data = twdata_init();
 
         // save new data field name
-        if (cont->data_field) free(cont->data_field);
-        cont->data_field = malloc(strlen(data_field)+1);
+        if (!cont->data_field || strlen(cont->data_field) < strlen(data_field))
+        {
+            if (cont->data_field) free(cont->data_field);
+            cont->data_field = malloc(strlen(data_field)+1);
+        }
         strcpy(cont->data_field, data_field);
 
         // save new xml data
-        if (cont->xml_data) free(cont->xml_data);
-        cont->xml_data = malloc(strlen(d)+1);
+        if (!cont->xml_data || strlen(cont->xml_data) < strlen(d))
+        {
+            if (cont->xml_data) free(cont->xml_data);
+            cont->xml_data = malloc(strlen(d)+1);
+        }
         strcpy(cont->xml_data, d);
 
         cont->framestep = framestep;
@@ -203,14 +201,14 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
         cont->producer_type = 1;
         cont->producer = producer;
+
+        // mark as inited
+        cont->init = 1;
     }
     else if (update_mask & 0x2)
     {
         cont->framestep = framestep;
     }
-
-    // mark as inited
-    cont->init = 1;
 
     xmlFree(key);
     return 1;
@@ -356,12 +354,10 @@ xmlChar * xml_get_content(const char * d) {
     xmlNodePtr node = find_content_node(&doc, d);
     xmlChar * buff = 0;
     if (node) {
-        xmlChar * key = xmlNodeGetContent(node->xmlChildrenNode);
-        buff = malloc(xmlStrlen(key)+1);
-        strcpy((char*)buff, (char*)key);
-        xmlFree(key);
+        buff = xmlNodeGetContent(node->xmlChildrenNode);
     }
 
+    xmlFreeDoc(doc);
     return buff;
 }
 
