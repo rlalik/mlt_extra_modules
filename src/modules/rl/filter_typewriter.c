@@ -45,7 +45,7 @@ struct producer_ktitle_s
 typedef struct producer_ktitle_s *producer_ktitle;
 
 typedef struct {
-    TypeWriter * tw;          // holds TypeWriter object
+    TypeWriter * tw;        // holds TypeWriter object
 } twdata;
 
 typedef struct {
@@ -60,9 +60,10 @@ typedef struct {
 
     char * data_field;      // data field name
     char * xml_data;        // data field content (xml data)
-    int framestep;
-    float sigma;
-    int seed;
+    int step_length;        // frame step value
+    float sigma;            // sigma of fluctuations
+    int seed;               // seed for random fluctuations
+    int macro;              // macro type: 0 - custom, 1 - char, 2 - word, 3 - line
 
     int producer_type;      // 1 - kdenlivetitle
     mlt_producer producer;  // hold producer pointer
@@ -94,9 +95,10 @@ twcont * twcont_clean(twcont* cont)
     cont->current_frame = -1;
     cont->data_field = NULL;
     cont->xml_data = NULL;
-    cont->framestep = 0;
+    cont->step_length = 0;
     cont->sigma = 0;
     cont->seed = 0;
+    cont->macro = 0;
     cont->producer_type = 0;
     cont->producer = NULL;
     return cont;
@@ -147,14 +149,15 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
     char data_field[200];
     char * d = NULL;
-    int framestep = 0;
+    int step_length = 0;
     int sigma = 0;
     int seed = 0;
+    int macro = 0;
 
     mlt_producer producer = NULL;
     mlt_properties producer_properties = NULL;
 
-    uint update_mask = 0;
+    unsigned int update_mask = 0;
 
     // fake loop, break after one loop
     while (1)
@@ -172,19 +175,20 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
             strcpy(data_field, "xmldata");
             d = mlt_properties_get( producer_properties, data_field );
-            framestep = atoi(mlt_properties_get(filter_p, "framestep"));
-            sigma = atof(mlt_properties_get(filter_p, "framestep_sigma"));
+            step_length = atoi(mlt_properties_get(filter_p, "step_length"));
+            sigma = atof(mlt_properties_get(filter_p, "step_sigma"));
             seed = atoi(mlt_properties_get(filter_p, "random_seed"));
+            macro = atoi(mlt_properties_get(filter_p, "macro_type"));
 
             int res_d = -1;
             if (cont->xml_data && d)
                 res_d = strcmp(cont->xml_data, d);
 
             // if xml data changed, set update mask 0x1
-            if (res_d != 0)
-                update_mask = 0x1;
+            if (res_d != 0 || macro != cont->macro)
+                update_mask = 0x3;
 
-            if (framestep != cont->framestep || sigma != cont->sigma || seed || cont->seed)
+            if (step_length != cont->step_length || sigma != cont->sigma || seed != cont->seed)
                 update_mask |= 0x2;
 
             // clear and prepare for new parsing
@@ -217,14 +221,30 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
         // Get content data and backup in the tw container.
         xp_setDocument(cont->xp, d);
         xp_parse(cont->xp);
-        uint n = xp_getContentNodesNumber(cont->xp);
+        unsigned int n = xp_getContentNodesNumber(cont->xp);
 
         for (int i = 0; i < n; ++i)
         {
             char * key = xp_getNodeContent(cont->xp, i);
             twdata * data = twdata_init();
-            tw_setPattern(data->tw, key);
-            tw_setFrameStep(data->tw, framestep);
+
+            if (macro) {
+                char * buff = malloc(strlen(key)+5);
+                char c;
+                switch (macro) {
+                    case 1: c = 'c'; break;
+                    case 2: c = 'w'; break;
+                    case 3: c = 'l'; break;
+                    default: break;
+                }
+
+                sprintf(buff, ":%c{%s}", c, key);
+                tw_setPattern(data->tw, buff);
+                free(buff);
+            } else {
+                tw_setPattern(data->tw, key);
+            }
+            tw_setFrameStep(data->tw, step_length);
             tw_setStepSigma(data->tw, sigma);
             tw_setStepSeed(data->tw, seed);
             tw_parse(data->tw);
@@ -235,6 +255,7 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
             free(key);
         }
 
+        cont->macro = macro;
         cont->producer_type = 1;
         cont->producer = producer;
 
@@ -245,11 +266,14 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
     {
         for (int i = 0; i < cont->size; ++i)
         {
-            tw_setFrameStep(cont->renders[i]->tw, framestep);
+            tw_setFrameStep(cont->renders[i]->tw, step_length);
             tw_setStepSigma(cont->renders[i]->tw, sigma);
             tw_setStepSeed(cont->renders[i]->tw, seed);
             tw_parse(cont->renders[i]->tw);
         }
+        cont->step_length = step_length;
+        cont->sigma = sigma;
+        cont->seed = seed;
     }
 
     return 1;
@@ -282,7 +306,7 @@ static int update_producer(mlt_frame frame, mlt_properties frame_p, twcont * con
     }
 
     // render the string and set as a content value
-    uint n = xp_getContentNodesNumber(cont->xp);
+    unsigned int n = xp_getContentNodesNumber(cont->xp);
     for (int i = 0; i < n; ++i) {
         const char * buff_render = tw_render(cont->renders[i]->tw, pos);
         xp_setNodeContent(cont->xp, i, buff_render);

@@ -1,3 +1,11 @@
+2020-11-16  Rafał Lalik <rafallalik@gmail.com>
+
+  * Version 0.3.0
+  * Renaming of plugin parameters
+  * The new parameter macro_type.
+  * Now effect can expand text according to macro_type content.
+  * Updated README.md to descibe effects.
+
 2020-11-12  Rafał Lalik <rafallalik@gmail.com>
 
   * Version 0.2.0
