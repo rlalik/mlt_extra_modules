@@ -2,54 +2,54 @@ schema_version: 0.1
 type: filter # consumer, filter, producer, or transition
 identifier: typewriter
 title: TypeWriter
-version: 0.0.1
-copyright: Copyright (C) 2017 Rafal Lalik
+version: 0.3.2
+copyright: Copyright (C) Rafal Lalik
 license: GPL
 language: en
 url: none
-creator: Rafal Lalik
+creator: Rafal Lalik <rafallalik@gmail.com>
 tags:
-  - Video # this may produce video
-description: Type Writer effect
-#icon:
-  #filename: oldfilm/oldfilm.svg # relative to $MLT_DATA/modules/
-  #content-type: image/svg
+  - Video
+description: |
+    Typewriter effect applied to kdenlivetitler producer
 
-notes: Implementation or additional usage notes go here.
-bugs: # this can be just for documentation, or the tool may disclose it to help user avoid pitfalls
-  - need to do some speed improvement.
+notes: >
+    Original development: https://github.com/rlalik/mlt_extra_modules
 
 parameters:
-  - identifier: field
-    title: Parsing Field
-    type: string
-    description: Field name to parse
-    readonly: no
-    required: yes
-    default: data
-    mutable: yes
-    widget: combo
-    values:
-      - data
-      - xmldata
-    unit: pixel
-
-  - identifier: beg
-    title: begin marker
-    type: string
-    description: Begin marker of the parsed string
-    readonly: no
-    required: yes
-    default: |^|
-    mutable: yes
-    widget: textbox
-
-  - identifier: end
-    title: End marker
+  - identifier: step_length
+    title: Distance between basic steps
     type: integer
-    description: End marker of the parsed string
+    description: Defines how many frames it takes to display next character
     readonly: no
-    required: yes
-    default: |$|
     mutable: yes
-    widget: textbox
+    default: 25
+
+  - identifier: sigma_step
+    title: Fluctuation of step length
+    type: integer
+    description: Varies the step position by random value following normal distribution
+    readonly: no
+    mutable: yes
+    default: 0
+
+  - identifier: random_seed
+    title: Seed value
+    type: integer
+    description: Seed value for the random generator
+    readonly: no
+    mutable: yes
+    default: 0
+
+  - identifier: macro_type
+    title: Macro expansion type
+    type: integer
+    description: |
+        Defines type of macro expansion:
+        0 - custom macro,
+        1 - expansion char-by-chat
+        2 - expansion word-by-word
+        3 - expansion line-by-line
+    readonly: no
+    mutable: yes
+    default: 1
