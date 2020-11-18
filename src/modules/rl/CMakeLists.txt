@@ -1,12 +1,8 @@
 set(rl_src
-    c_functions.cpp
     factory.c
     filter_typewriter.c
-    parsing_functions.cpp
     typewriter.cpp
     typewriter.h
-    xmlparser.cpp
-    xmlparser.h
 )
 add_library(mltrl MODULE ${rl_src})
 target_link_libraries(mltrl

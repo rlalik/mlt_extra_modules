@@ -32,6 +32,8 @@
 #include <vector>
 #include <random>
 
+#include <QDomElement>
+
 using namespace std;
 
 struct Frame
@@ -114,10 +116,38 @@ private:
     std::normal_distribution<> d;
 };
 
+class XmlParser
+{
+public:
+    XmlParser();
+    virtual ~XmlParser();
+
+    void setDocument(const char * xml);
+
+    int parse();
+    uint getContentNodesNumber() const { return node_vec.size(); }
+
+    char * getNodeContent(uint i) const;
+    void setNodeContent(uint i, const char *);
+
+    void printDoc() const;
+
+    void clear();
+
+    char * getDocument() const;
+
+private:
+
+private:
+    QString doc;
+    QDomDocument dom;
+    QDomNodeList items;
+    std::vector<QDomNode> node_vec;
+};
+
 #else
-typedef
-    void *
-        TypeWriter;
+typedef void * TypeWriter;
+typedef void * XmlParser;
 #endif
 
 #ifdef __cplusplus
@@ -142,9 +172,20 @@ extern unsigned int tw_isEnd(TypeWriter * tw);
 extern void tw_clear(TypeWriter * tw);
 extern void tw_debug(TypeWriter * tw);
 
+extern XmlParser * xp_init();
+extern void xp_delete(XmlParser * tw);
+extern void xp_setDocument(XmlParser * tw, const char * str);
+extern int xp_parse(XmlParser * tw);
+extern int xp_getContentNodesNumber(XmlParser * tw);
+extern char * xp_getNodeContent(XmlParser * tw, uint i);
+extern void xp_setNodeContent(XmlParser * tw, uint i, const char * str);
+extern char * xp_getDocument(XmlParser * tw);
+extern void xp_printDoc(XmlParser * tw);
+
 #endif
 #ifdef __cplusplus
 }
 #endif
+
 
 #endif /* TYPEWRITER_H */

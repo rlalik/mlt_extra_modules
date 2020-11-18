@@ -19,10 +19,7 @@ TARGET = ../libmltrl$(LIBSUF)
 OBJS = factory.o \
 	   filter_typewriter.o
 
-CPPOBJS = typewriter.o \
-	   parsing_functions.o \
-	   c_functions.o \
-	   xmlparser.o
+CPPOBJS = typewriter.o
 
 SRCS := $(OBJS:.o=.c) $(CPPOBJS:.o=.cpp)
 
@@ -38,7 +35,7 @@ distclean:	clean
 		rm -f .depend
 
 clean:	
-		rm -f $(OBJS) $(TARGET)
+		rm -f $(OBJS) $(CPPOBJS) $(TARGET)
 
 install: all
 		install -m 755 $(TARGET) "$(DESTDIR)$(moduledir)"

@@ -27,7 +27,6 @@
 #include <math.h>
 
 #include "typewriter.h"
-#include "xmlparser.h"
 
 struct producer_ktitle_s
 {
@@ -230,7 +229,7 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, tw
 
             if (macro) {
                 char * buff = malloc(strlen(key)+5);
-                char c;
+                char c = 0;
                 switch (macro) {
                     case 1: c = 'c'; break;
                     case 2: c = 'w'; break;
