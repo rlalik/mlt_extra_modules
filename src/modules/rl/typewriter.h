@@ -26,8 +26,6 @@
 #ifndef TYPEWRITER_H
 #define TYPEWRITER_H
 
-#ifdef __cplusplus
-
 #include <string>
 #include <vector>
 #include <random>
@@ -52,7 +50,7 @@ class TypeWriter
 {
 public:
     TypeWriter();
-    virtual ~TypeWriter();
+    virtual ~TypeWriter() = default;
 
     void setFrameRate(uint fr) { frame_rate = fr; }
     uint getFrameRate() const { return frame_rate; }
@@ -111,8 +109,7 @@ private:
     std::vector<Frame> frames;
     int last_used_idx;
 
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
+    std::mt19937 gen;
     std::normal_distribution<> d;
 };
 
@@ -127,16 +124,12 @@ public:
     int parse();
     uint getContentNodesNumber() const { return node_vec.size(); }
 
-    char * getNodeContent(uint i) const;
-    void setNodeContent(uint i, const char *);
-
-    void printDoc() const;
+    QString getNodeContent(uint i) const;
+    void setNodeContent(uint i, const QString & content);
 
     void clear();
 
-    char * getDocument() const;
-
-private:
+    QString getDocument() const;
 
 private:
     QString doc;
@@ -144,48 +137,5 @@ private:
     QDomNodeList items;
     std::vector<QDomNode> node_vec;
 };
-
-#else
-typedef void * TypeWriter;
-typedef void * XmlParser;
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-#if defined(__STDC__) || defined(__cplusplus)
-
-extern TypeWriter * tw_init();
-extern void tw_delete(TypeWriter * tw);
-extern void tw_setFrameRate(TypeWriter * tw, unsigned int fr);
-extern unsigned int tw_getFrameRate(TypeWriter * tw);
-extern void tw_setFrameStep(TypeWriter * tw, unsigned int fs);
-extern void tw_setStepSigma(TypeWriter * tw, float ss);
-extern void tw_setStepSeed(TypeWriter * tw, unsigned int ss);
-extern void tw_setPattern(TypeWriter * tw, const char * str);
-extern const char * tw_getPattern(TypeWriter * tw);
-extern int tw_parse(TypeWriter * tw);
-extern void tw_printParseResult(TypeWriter * tw);
-extern const char * tw_render(TypeWriter * tw, unsigned int frame);
-extern unsigned int tw_count(TypeWriter * tw);
-extern unsigned int tw_isEnd(TypeWriter * tw);
-extern void tw_clear(TypeWriter * tw);
-extern void tw_debug(TypeWriter * tw);
-
-extern XmlParser * xp_init();
-extern void xp_delete(XmlParser * tw);
-extern void xp_setDocument(XmlParser * tw, const char * str);
-extern int xp_parse(XmlParser * tw);
-extern int xp_getContentNodesNumber(XmlParser * tw);
-extern char * xp_getNodeContent(XmlParser * tw, uint i);
-extern void xp_setNodeContent(XmlParser * tw, uint i, const char * str);
-extern char * xp_getDocument(XmlParser * tw);
-extern void xp_printDoc(XmlParser * tw);
-
-#endif
-#ifdef __cplusplus
-}
-#endif
-
 
 #endif /* TYPEWRITER_H */

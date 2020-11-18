@@ -1,6 +1,6 @@
 set(rl_src
     factory.c
-    filter_typewriter.c
+    filter_typewriter.cpp
     typewriter.cpp
     typewriter.h
 )

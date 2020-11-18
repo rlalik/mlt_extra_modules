@@ -53,9 +53,6 @@ TypeWriter::TypeWriter()
 {
 }
 
-TypeWriter::~TypeWriter()
-{
-}
 
 void TypeWriter::clear()
 {
@@ -670,9 +667,7 @@ int TypeWriter::parseMacro(const std::string& line, uint & i, uint & frame)
 *======================================================================*/
 
 char* clone_string(const char* string) {
-    int len;
-    len = strlen(string);
-    char* new_string = (char*) malloc(sizeof(char)*(len+1));
+    char* new_string = new char[strlen(string)+1];
     if (new_string)
         strcpy(new_string, string);
     return new_string;
@@ -719,15 +714,15 @@ int XmlParser::parse()
     return 1;
 }
 
-char * XmlParser::getNodeContent(uint i) const
+QString XmlParser::getNodeContent(uint i) const
 {
     if (i >= node_vec.size())
         return nullptr;
 
-    return clone_string(node_vec[i].nodeValue().toStdString().c_str());
+    return node_vec[i].nodeValue();
 }
 
-void XmlParser::setNodeContent(uint i, const char * content)
+void XmlParser::setNodeContent(uint i, const QString & content)
 {
     if (i >= node_vec.size())
         return;
@@ -735,145 +730,7 @@ void XmlParser::setNodeContent(uint i, const char * content)
     node_vec[i].setNodeValue(content);
 }
 
-char * XmlParser::getDocument() const
+QString XmlParser::getDocument() const
 {
-    return clone_string(dom.toString().toStdString().c_str());
-}
-
-void XmlParser::printDoc() const {
-    printf("DOM = %s\n", dom.toString().toStdString().c_str());
-}
-
-/*======================================================================*
- C-functions
-*======================================================================*/
-
-TypeWriter * tw_init()
-{
-    TypeWriter *tw = new TypeWriter;
-    return tw;
-}
-
-void tw_delete(TypeWriter * tw)
-{
-    delete (TypeWriter *) tw;
-    tw = 0;
-}
-
-void tw_setFrameRate(TypeWriter * tw, unsigned int fr)
-{
-    tw->setFrameRate(fr);
-}
-
-unsigned int tw_getFrameRate(TypeWriter * tw)
-{
-    return tw->getFrameRate();
-}
-
-void tw_setFrameStep(TypeWriter * tw, unsigned int fs)
-{
-    tw->setFrameStep(fs);
-}
-
-void tw_setStepSigma(TypeWriter * tw, float ss)
-{
-    tw->setStepSigma(ss);
-}
-
-void tw_setStepSeed(TypeWriter * tw, unsigned int ss)
-{
-    tw->setStepSeed(ss);
-}
-
-void tw_setPattern(TypeWriter * tw, const char * str)
-{
-    tw->setPattern(str);
-}
-
-const char * tw_getPattern(TypeWriter * tw)
-{
-    return tw->getPattern().c_str();
-}
-
-int tw_parse(TypeWriter * tw)
-{
-    return tw->parse();
-}
-
-void tw_printParseResult(TypeWriter * tw)
-{
-    return tw->printParseResult();
-}
-
-const char * tw_render(TypeWriter * tw, unsigned int frame)
-{
-    return tw->render(frame).c_str();
-}
-
-unsigned int tw_count(TypeWriter * tw)
-{
-    return tw->count();
-}
-
-unsigned int tw_isEnd(TypeWriter * tw)
-{
-    return tw->isEnd();
-}
-
-void tw_clear(TypeWriter * tw)
-{
-    tw->clear();
-}
-
-void tw_debug(TypeWriter * tw)
-{
-    tw->debug();
-}
-
-
-XmlParser * xp_init()
-{
-    XmlParser *xp = new XmlParser;
-    return xp;
-}
-
-void xp_delete(XmlParser * xp)
-{
-    delete (XmlParser *) xp;
-    xp = 0;
-}
-
-void xp_setDocument(XmlParser * xp, const char * str)
-{
-    return xp->setDocument(str);
-}
-
-int xp_parse(XmlParser * xp)
-{
-    return xp->parse();
-}
-
-int xp_getContentNodesNumber(XmlParser * xp)
-{
-    return xp->getContentNodesNumber();
-}
-
-char * xp_getNodeContent(XmlParser * xp, uint i)
-{
-    return xp->getNodeContent(i);
-}
-
-void xp_setNodeContent(XmlParser * xp, uint i, const char * str)
-{
-    return xp->setNodeContent(i, str);
-}
-
-char * xp_getDocument(XmlParser * xp)
-{
-    return xp->getDocument();
-}
-
-void xp_printDoc(XmlParser * xp)
-{
-    return xp->printDoc();
+    return dom.toString();
 }

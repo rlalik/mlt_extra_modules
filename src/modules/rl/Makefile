@@ -16,10 +16,9 @@ LDFLAGS += $(QTLIBS) -lmlt -lm
 
 TARGET = ../libmltrl$(LIBSUF)
 
-OBJS = factory.o \
-	   filter_typewriter.o
+OBJS = factory.o
 
-CPPOBJS = typewriter.o
+CPPOBJS = filter_typewriter.o typewriter.o
 
 SRCS := $(OBJS:.o=.c) $(CPPOBJS:.o=.cpp)
 
