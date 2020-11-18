@@ -1,0 +1,4 @@
+include(CMakeFindDependencyMacro)
+
+find_dependency(QT5 QUIET REQUIRED COMPONENTS Core Xml)
+include(${CMAKE_CURRENT_LIST_DIR}/@CMAKE_PROJECT_NAME@Targets.cmake)

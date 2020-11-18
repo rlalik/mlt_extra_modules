@@ -3,7 +3,7 @@ MLT FRAMEWORK EXTRA MODULES README
 Written by Rafal Lalik <rafallalik@gmail.com>
 
 This is a collection of my custom effects for MLT and Kdenlive. Currently the collection consists of following effects:
-* TypeWrite
+* TypeWriter
 
 MLT is a LGPL multimedia framework designed for television broadcasting, and melted is a GPL multi-unit video playout server with realtime effects.
 
@@ -19,10 +19,12 @@ share/mlt/rl/filter_typewriter.yml
 and remove them
 
 ### Requirements
-
 The package require Qt5:Core and Qt5:Xml developer package (headers and libraries) to availabe in the system.
 
 ### Configuration
+Configuration can be invoked with `./configure` script or using cmake.
+
+#### Using `./configure`
 Configuration is triggered by running:
 
 ```shell
@@ -37,6 +39,15 @@ To install the kdenlive effect file add option:
 --kdenlive-effects=directory
 ```
 where `directory` is a path to kdenlive effects dir. Typical location on your system might looks like `/usr/share/kdenlive/effects`.
+
+#### Using cmake
+Create build directory, and call `cmake` pointing to source directory, e.g.
+```shell
+mkdir build
+cd build
+cmake ..
+```
+The Kdenlive effects will be installed by default. To disable, pass additional option `-DKDENLIVE=OFF`.
 
 ### Compilation
 Once configured, it should be sufficient to run:

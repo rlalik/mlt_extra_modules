@@ -20,8 +20,6 @@ dist-clean: distclean
 include config.mak
 
 install:
-	install -d "$(DESTDIR)$(prefix)/bin"
-	install -d "$(DESTDIR)$(prefix)/include"
 	install -d "$(DESTDIR)$(libdir)"
 	install -d "$(DESTDIR)$(moduledir)"
 ifeq ($(extra_versioning), true)
