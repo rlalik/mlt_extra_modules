@@ -45,7 +45,7 @@ Create build directory, and call `cmake` pointing to source directory, e.g.
 ```shell
 mkdir build
 cd build
-cmake ..
+cmake .. -DCMAKE_INSTALL_PREFIX=$(pkg-config mlt-framework --variable=prefix)
 ```
 The Kdenlive effects will be installed by default. To disable, pass additional option `-DKDENLIVE=OFF`.
 
