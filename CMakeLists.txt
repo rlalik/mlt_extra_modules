@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(MltExtraPackages
-    VERSION 0.3.2
+    VERSION 0.3.3
     LANGUAGES CXX)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")

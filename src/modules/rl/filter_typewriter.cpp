@@ -98,38 +98,37 @@ static int get_producer_data(mlt_properties filter_p, mlt_properties frame_p, Fi
 
     unsigned int update_mask = 0;
 
-    // fake loop, break after one loop
-    while (1)
+    /* Try with kdenlivetitle */
+    producer_ktitle kt = static_cast<producer_ktitle>(mlt_properties_get_data( frame_p, "producer_kdenlivetitle", NULL ) );
+    if (kt != nullptr)
     {
-        /* Try with kdenlivetitle */
-        producer_ktitle kt = static_cast<producer_ktitle>(mlt_properties_get_data( frame_p, "producer_kdenlivetitle", NULL ) );
-        if (kt != nullptr)
-        {
-            /* Obtain properties of producer */
-            producer = &kt->parent;
-            producer_properties = MLT_PRODUCER_PROPERTIES( producer );
+        /* Obtain properties of producer */
+        producer = &kt->parent;
+        producer_properties = MLT_PRODUCER_PROPERTIES( producer );
 
-            if (producer == nullptr || producer_properties == nullptr)
-                return 0;
+        if (producer == nullptr || producer_properties == nullptr)
+            return 0;
 
-            d = mlt_properties_get( producer_properties, "xmldata" );
-            step_length = atoi(mlt_properties_get(filter_p, "step_length"));
-            sigma = atof(mlt_properties_get(filter_p, "step_sigma"));
-            seed = atoi(mlt_properties_get(filter_p, "random_seed"));
-            macro = atoi(mlt_properties_get(filter_p, "macro_type"));
+        d = mlt_properties_get( producer_properties, "xmldata" );
+        step_length = atoi(mlt_properties_get(filter_p, "step_length"));
+        sigma = atof(mlt_properties_get(filter_p, "step_sigma"));
+        seed = atoi(mlt_properties_get(filter_p, "random_seed"));
+        macro = atoi(mlt_properties_get(filter_p, "macro_type"));
 
-            // if xml data changed, set update mask 0x1
-            if (cont->xml_data != d || macro != cont->macro)
-                update_mask = 0x3;
+        // if xml data changed, set update mask 0x1
+        if (cont->xml_data != d || macro != cont->macro)
+            update_mask = 0x3;
 
-            if (step_length != cont->step_length || sigma != cont->sigma || seed != cont->seed)
-                update_mask |= 0x2;
+        if (step_length != cont->step_length || sigma != cont->sigma || seed != cont->seed)
+            update_mask |= 0x2;
 
-            // clear and prepare for new parsing
-            if (0 == update_mask)
-                return 1;
-            break;
-        }
+        // clear and prepare for new parsing
+        if (0 == update_mask)
+            return 1;
+    }
+    else
+    {
+        return 0;
     }
 
     if (update_mask & 0x1)

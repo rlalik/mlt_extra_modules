@@ -9,7 +9,7 @@ target_link_libraries(mltrl
     PRIVATE
         m
     PUBLIC
-        mlt Qt::Xml
+        mlt Qt::Core Qt::Xml
 )
 # Create module in parent directory, for the benefit of "source setenv".
 set_target_properties(mltrl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ..)
