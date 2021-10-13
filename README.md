@@ -1,3 +1,9 @@
+# DEPRECATION NOTICE
+
+This package was mainly created to introduce typewriter effect. As the typewriter effect was merged into mlt-6 and is available there, it is not recommended to install this package separately. It is however keept updated with the version in mlt (bigfixes, etc).
+
+
+
 MLT FRAMEWORK EXTRA MODULES README
 ---
 Written by Rafal Lalik <rafallalik@gmail.com>
